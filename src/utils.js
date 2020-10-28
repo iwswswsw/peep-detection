@@ -85,11 +85,11 @@ export function drawPoint(ctx, y, x, r, color) {
 /**
  * Draws a line on a canvas, i.e. a joint
  */
-export function drawSegment([ay, ax], [by, bx], color, scale, ctx) {
+export function drawSegment([ay, ax], [by, bx], color, scale, ctx, width = lineWidth ) {
   ctx.beginPath();
   ctx.moveTo(ax * scale, ay * scale);
   ctx.lineTo(bx * scale, by * scale);
-  ctx.lineWidth = lineWidth;
+  ctx.lineWidth = width;
   ctx.strokeStyle = color;
   ctx.stroke();
 }
@@ -106,6 +106,21 @@ export function drawSkeleton(keypoints, minConfidence, ctx, color = 'aqua', scal
         toTuple(keypoints[0].position), toTuple(keypoints[1].position), color,
         scale, ctx);
   });
+}
+
+export function drawEyeLine(keypoints, minConfidence, ctx, color = 'black', scale = 1) {
+  const lineWidth = 100;
+  const keypointLeftEye = keypoints[1];
+  const keypointRightEye = keypoints[2];
+  const keypointLeftEar = keypoints[3];
+  const keypointRightEar = keypoints[4];
+
+  if (keypointLeftEye.score < minConfidence || keypointRightEye.score < minConfidence) return;
+
+  drawSegment(
+    [keypointLeftEye.position.y, keypointLeftEar.position.x],
+    [keypointRightEye.position.y, keypointRightEar.position.x],
+    color, scale, ctx, lineWidth);
 }
 
 /**

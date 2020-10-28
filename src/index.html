@@ -2,11 +2,16 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>PoseNet - Peep Detection</title>
+    <title>Peep Detection</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   
   <body>
+    <form id="privacy-mode">
+      プライバシーモード：
+      <input type="radio" name="privacy" value="on" checked="checked">オン
+      <input type="radio" name="privacy" value="off">オフ
+    </p>
     <div id="info" style='display:none'></div>
     <div id="main">
       <video id="video" playsinline style="display: none;"></video>

@@ -1,6 +1,6 @@
 import * as posenet from '@tensorflow-models/posenet';
 import Stats from 'stats.js';
-import {drawKeypoints, drawSkeleton, isMobile} from './utils';
+import {drawKeypoints, drawSkeleton, isMobile, drawEyeLine} from './utils';
 import {setupCamera} from './setupCamera';
 import {videoWidth, videoHeight, colors} from './const';
 
@@ -48,14 +48,22 @@ const detectPoseInRealTime = (video, net) => {
     ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
     ctx.restore();
 
+    // プライバシーモードの取得
+    const isPrivacyModeOn = document.getElementById('privacy-mode').privacy.value === 'on';
+
     posesConf.forEach(({score, keypoints}, i) => {
       drawKeypoints(keypoints, minPartConfidence, ctx, colors[i % colors.length]);
       drawSkeleton(keypoints, minPartConfidence, ctx, colors[i % colors.length]);
       // drawBoundingBox(keypoints, ctx);
+
+      if (isPrivacyModeOn) {
+        drawEyeLine(keypoints, minPartConfidence, ctx);
+      }
     });
 
     stats.end();
 
+    // 認識しているポーズ数の表示
     const text = document.createTextNode(`poses count (show / all): ${posesConf.length} / ${poses.length}`);
     const newElem = document.createElement('p').appendChild(text);
     const parent = document.getElementById('raw-data');
