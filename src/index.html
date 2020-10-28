@@ -7,11 +7,20 @@
   </head>
   
   <body>
+    <div id="model-mode">
+      <p></p>
+    </div>
+    <p>モデルの切替え: </p>
+    <ul>
+      <li><a href="?model=posenet">posenet</li>
+      <li><a href="?model=blazeface">blazeface</li>
+    </ul>
+    </form>
     <form id="privacy-mode">
-      プライバシーモード：
+      プライバシーモード: 
       <input type="radio" name="privacy" value="on" checked="checked">オン
       <input type="radio" name="privacy" value="off">オフ
-    </p>
+    </form>
     <div id="info" style='display:none'></div>
     <div id="main">
       <video id="video" playsinline style="display: none;"></video>
