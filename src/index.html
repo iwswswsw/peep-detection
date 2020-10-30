@@ -21,10 +21,10 @@
       <input type="radio" name="privacy" value="on" checked="checked">オン
       <input type="radio" name="privacy" value="off">オフ
     </form>
-    <div id="info" style='display:none'></div>
-    <div id="main">
-      <video id="video" playsinline style="display: none;"></video>
-      <canvas id="canvas" width="800px" height="600px"></canvas>
+    <div id="info" style="display: none"></div>
+    <div id="main" style="position: relative">
+      <video id="video" playsinline style="-webkit-transform: scaleX(-1); transform: scaleX(-1); visibility: hidden; width: auto; height: auto;"></video>
+      <canvas id="canvas" style="position: absolute; top: 0; left: 0;"></canvas>
     </div>
     <div id="raw-data">
       <p></p>

@@ -4,7 +4,7 @@ import * as blazeface from '@tensorflow-models/blazeface';
 import Stats from 'stats.js';
 import {drawKeypoints, drawSkeleton, isMobile, drawEyeLine} from './utils';
 import {setupCamera} from './setupCamera';
-import {videoWidth, videoHeight, colors} from './const';
+import {colors} from './const';
 
 const stats = new Stats();
 
@@ -20,8 +20,7 @@ const setupFPS = () => {
   document.getElementById('main').appendChild(stats.dom);
 };
 
-const detectPoseInRealTime = (video, net) => {
-  const canvas = document.getElementById('canvas');
+const detectPoseInRealTime = (video, net, canvas) => {
   const ctx = canvas.getContext('2d');
   const minPoseConfidence = 0.15;
   const minPartConfidence = 0.1;
@@ -42,12 +41,12 @@ const detectPoseInRealTime = (video, net) => {
     poses = poses.concat(allPoses);
     const posesConf = poses.filter(({score}) => score >= minPoseConfidence);
 
-    ctx.clearRect(0, 0, videoWidth, videoHeight);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
     ctx.scale(-1, 1);
-    ctx.translate(-videoWidth, 0);
-    ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+    ctx.translate(-canvas.width, 0);
+    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
     ctx.restore();
 
     // プライバシーモードの取得
@@ -77,8 +76,7 @@ const detectPoseInRealTime = (video, net) => {
   poseDetectionFrame();
 };
 
-const detectFaceInRealTime = (video, model) => {
-  const canvas = document.getElementById('canvas');
+const detectFaceInRealTime = (video, model, canvas) => {
   const ctx = canvas.getContext('2d');
   const minConfidence = 0.15;
 
@@ -101,8 +99,8 @@ const detectFaceInRealTime = (video, model) => {
 
       ctx.save();
       ctx.scale(-1, 1);
-      ctx.translate(-videoWidth, 0);
-      ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+      ctx.translate(-canvas.width, 0);
+      ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
       ctx.restore();
 
       for (let i = 0; i < predConf.length; i++) {
@@ -204,14 +202,21 @@ const bindPage = async () => {
     throw e;
   }
 
+  video.width = video.videoWidth;
+  video.height = video.videoHeight;
+
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
   // リソース利用状況表示窓の呼び出し
   setupFPS();
 
   // モデルの予測を表示
   if (isPosenetUsed) {
-    detectPoseInRealTime(video, model);
+    detectPoseInRealTime(video, model, canvas);
   } else {
-    detectFaceInRealTime(video, model);
+    detectFaceInRealTime(video, model, canvas);
   }
 };
 
