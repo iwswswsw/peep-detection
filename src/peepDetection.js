@@ -2,11 +2,23 @@ import {parse} from 'querystring';
 import * as posenet from '@tensorflow-models/posenet';
 import * as blazeface from '@tensorflow-models/blazeface';
 import Stats from 'stats.js';
-import {drawKeypoints, drawSkeleton, isMobile, drawEyeLine} from './utils';
+import {drawKeypoints, drawSkeleton, isMobile} from './utils';
 import {setupCamera} from './setupCamera';
 import {colors} from './const';
+import sunglassURL from './img/sunglass_normal.png';
 
 const stats = new Stats();
+
+let sunglassImg;
+
+const loadImage = (src) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = (e) => reject(e);
+    img.src = src;
+  });
+};
 
 const loadVideo = async () => {
   const video = await setupCamera();
@@ -58,7 +70,30 @@ const detectPoseInRealTime = (video, net, canvas) => {
       // drawBoundingBox(keypoints, ctx);
 
       if (isPrivacyModeOn) {
-        drawEyeLine(keypoints, minPartConfidence, ctx);
+        // 目線を入れる
+        // drawEyeLine(keypoints, minPartConfidence, ctx);
+
+        // サングラスを描く
+        const leyePoint = keypoints[1].position;
+        const reyePoint = keypoints[2].position;
+        const scale = (reyePoint.x - leyePoint.x) / 110;
+        const sw = sunglassImg.width * scale;
+        const sh = sunglassImg.height * scale;
+        const center = {
+          x: (reyePoint.x + leyePoint.x) / 2,
+          y: (reyePoint.y + leyePoint.y) / 2,
+        };
+        const angle = Math.atan2(reyePoint.y - leyePoint.y, reyePoint.x - leyePoint.x);
+        const drawPoint = {
+          x: - sw / 2,
+          y: - sh / 2.3, // 中心より少し下に描画する
+        };
+
+        ctx.save();
+        ctx.translate(center.x, center.y);
+        ctx.rotate(angle);
+        ctx.drawImage(sunglassImg, drawPoint.x, drawPoint.y, sw, sh);
+        ctx.restore();
       }
     });
 
@@ -132,18 +167,40 @@ const detectFaceInRealTime = (video, model, canvas) => {
 
         if (isPrivacyModeOn) {
           // 目線を描く
-          // TODO: posenet側と同じ関数使いたい
-          const keypointLeftEye = landmarks[1]; // [x, y]
-          const keypointRightEye = landmarks[0];
-          const keypointLeftEar = landmarks[5];
-          const keypointRightEar = landmarks[4];
+          // posenet側と同じ関数使いたい
+          // const keypointLeftEye = landmarks[1]; // [x, y]
+          // const keypointRightEye = landmarks[0];
+          // const keypointLeftEar = landmarks[5];
+          // const keypointRightEar = landmarks[4];
 
-          ctx.beginPath();
-          ctx.moveTo(keypointLeftEar[0], keypointLeftEye[1]);
-          ctx.lineTo(keypointRightEar[0], keypointRightEye[1]);
-          ctx.lineWidth = 100;
-          ctx.strokeStyle = 'black';
-          ctx.stroke();
+          // ctx.beginPath();
+          // ctx.moveTo(keypointLeftEar[0], keypointLeftEye[1]);
+          // ctx.lineTo(keypointRightEar[0], keypointRightEye[1]);
+          // ctx.lineWidth = 100;
+          // ctx.strokeStyle = 'black';
+          // ctx.stroke();
+
+          // サングラスを描く
+          const [leyeX, leyeY] = landmarks[1];
+          const [reyeX, reyeY] = landmarks[0];
+          const scale = (reyeX - leyeX) / 140;
+          const sw = sunglassImg.width * scale;
+          const sh = sunglassImg.height * scale;
+          const center = {
+            x: (reyeX + leyeX) / 2,
+            y: (reyeY + leyeY) / 2,
+          };
+          const angle = Math.atan2(reyeY - leyeY, reyeX - leyeX);
+          const drawPoint = {
+            x: - sw / 2,
+            y: - sh / 2.3, // 中心より少し下に描画する
+          };
+
+          ctx.save();
+          ctx.translate(center.x, center.y);
+          ctx.rotate(angle);
+          ctx.drawImage(sunglassImg, drawPoint.x, drawPoint.y, sw, sh);
+          ctx.restore();
         }
       }
     }
@@ -211,6 +268,8 @@ const bindPage = async () => {
 
   // リソース利用状況表示窓の呼び出し
   setupFPS();
+
+  sunglassImg = await loadImage(sunglassURL);
 
   // モデルの予測を表示
   if (isPosenetUsed) {
