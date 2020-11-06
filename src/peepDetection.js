@@ -183,7 +183,7 @@ const detectFaceInRealTime = (video, model, canvas) => {
           // サングラスを描く
           const [leyeX, leyeY] = landmarks[1];
           const [reyeX, reyeY] = landmarks[0];
-          const scale = (reyeX - leyeX) / 140;
+          const scale = (reyeX - leyeX) / 130; // posenetよりも少し大きめに描画されてしまうので、スケール調整
           const sw = sunglassImg.width * scale;
           const sh = sunglassImg.height * scale;
           const center = {
