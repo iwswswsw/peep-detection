@@ -246,3 +246,11 @@ export function drawOffsetVectors(
         [heatmapY, heatmapX], [offsetPointY, offsetPointX], color, scale, ctx);
   }
 }
+
+export function toPointObject([x, y]) {
+  return {x, y};
+};
+
+export function distancePoints(p1, p2) { // p = {x, y}
+  return Math.sqrt( Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+}

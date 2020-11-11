@@ -2,7 +2,9 @@ import {parse} from 'querystring';
 import * as posenet from '@tensorflow-models/posenet';
 import * as blazeface from '@tensorflow-models/blazeface';
 import Stats from 'stats.js';
-import {drawKeypoints, drawSkeleton, isMobile} from './utils';
+import {
+  drawKeypoints, drawSkeleton, isMobile, toPointObject, distancePoints,
+} from './utils';
 import {setupCamera} from './setupCamera';
 import {colors} from './const';
 import sunglassURL from './img/sunglass_normal.png';
@@ -53,55 +55,71 @@ const detectPoseInRealTime = (video, net, canvas) => {
     poses = poses.concat(allPoses);
     const posesConf = poses.filter(({score}) => score >= minPoseConfidence);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (posesConf.length > 0) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.save();
-    ctx.scale(-1, 1);
-    ctx.translate(-canvas.width, 0);
-    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-    ctx.restore();
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.translate(-canvas.width, 0);
+      ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+      ctx.restore();
 
-    // プライバシーモードの取得
-    const isPrivacyModeOn = document.getElementById('privacy-mode').privacy.value === 'on';
+      // 中心にある顔をメイン利用者としてフラグを立てる
+      const canvasCenter = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+      };
+      const mainPose = posesConf.reduce((prev, curr) => {
+        // （landmarks[3]は鼻の座標）
+        return distancePoints(curr.keypoints[0].position, canvasCenter) < distancePoints(prev.keypoints[0].position, canvasCenter)
+          ? curr : prev;
+      });
+      mainPose.main = true;
 
-    posesConf.forEach(({score, keypoints}, i) => {
-      drawKeypoints(keypoints, minPartConfidence, ctx, colors[i % colors.length]);
-      drawSkeleton(keypoints, minPartConfidence, ctx, colors[i % colors.length]);
-      // drawBoundingBox(keypoints, ctx);
+      // プライバシーモードの取得
+      const isPrivacyModeOn = document.getElementById('privacy-mode').privacy.value === 'on';
 
-      if (isPrivacyModeOn) {
-        // 目線を入れる
-        // drawEyeLine(keypoints, minPartConfidence, ctx);
+      posesConf.forEach(({score, keypoints, main}, i) => {
+        // メイン利用者以外は違う色で描画する
+        drawKeypoints(keypoints, minPartConfidence, ctx, colors[main ? 0 : 1]);
+        drawSkeleton(keypoints, minPartConfidence, ctx, colors[main ? 0 : 1]);
+        // drawBoundingBox(keypoints, ctx);
 
-        // サングラスを描く
-        const leyePoint = keypoints[1].position;
-        const reyePoint = keypoints[2].position;
-        const scale = (reyePoint.x - leyePoint.x) / 110;
-        const sw = sunglassImg.width * scale;
-        const sh = sunglassImg.height * scale;
-        const center = {
-          x: (reyePoint.x + leyePoint.x) / 2,
-          y: (reyePoint.y + leyePoint.y) / 2,
-        };
-        const angle = Math.atan2(reyePoint.y - leyePoint.y, reyePoint.x - leyePoint.x);
-        const drawPoint = {
-          x: - sw / 2,
-          y: - sh / 2.3, // 中心より少し下に描画する
-        };
+        if (isPrivacyModeOn) {
+          // 目線を入れる
+          // drawEyeLine(keypoints, minPartConfidence, ctx);
 
-        ctx.save();
-        ctx.translate(center.x, center.y);
-        ctx.rotate(angle);
-        ctx.drawImage(sunglassImg, drawPoint.x, drawPoint.y, sw, sh);
-        ctx.restore();
-      }
-    });
+          // サングラスを描く
+          const leyePoint = keypoints[1].position;
+          const reyePoint = keypoints[2].position;
+          const scale = (reyePoint.x - leyePoint.x) / 110;
+          const sw = sunglassImg.width * scale;
+          const sh = sunglassImg.height * scale;
+          const center = {
+            x: (reyePoint.x + leyePoint.x) / 2,
+            y: (reyePoint.y + leyePoint.y) / 2,
+          };
+          const angle = Math.atan2(reyePoint.y - leyePoint.y, reyePoint.x - leyePoint.x);
+          const drawPoint = {
+            x: - sw / 2,
+            y: - sh / 2.3, // 中心より少し下に描画する
+          };
+
+          ctx.save();
+          ctx.translate(center.x, center.y);
+          ctx.rotate(angle);
+          ctx.drawImage(sunglassImg, drawPoint.x, drawPoint.y, sw, sh);
+          ctx.restore();
+        }
+      });
+    }
 
     stats.end();
 
     // 認識しているポーズ数の表示
-    const text = document.createTextNode(`poses count (show / all): ${posesConf.length} / ${poses.length}`);
-    const newElem = document.createElement('p').appendChild(text);
+    const text = `poses count (show / all): ${posesConf.length} / ${poses.length} ${posesConf.length > 1 ? '覗き込みを検知しています（赤点・赤線）' : ''}`;
+    const textNode = document.createTextNode(text);
+    const newElem = document.createElement('p').appendChild(textNode);
     const parent = document.getElementById('raw-data');
     parent.replaceChild(newElem, parent.childNodes[0]);
 
@@ -138,6 +156,18 @@ const detectFaceInRealTime = (video, model, canvas) => {
       ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
       ctx.restore();
 
+      // 中心にある顔をメイン利用者としてフラグを立てる
+      const canvasCenter = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+      };
+      const mainPred = predConf.reduce((prev, curr) => {
+        // （landmarks[3]は鼻の座標）
+        return distancePoints(toPointObject(curr.landmarks[3]), canvasCenter) < distancePoints(toPointObject(prev.landmarks[3]), canvasCenter)
+          ? curr : prev;
+      });
+      mainPred.main = true;
+
       for (let i = 0; i < predConf.length; i++) {
         if (returnTensors) {
           predConf[i].topLeft = predConf[i].topLeft.arraySync();
@@ -147,15 +177,16 @@ const detectFaceInRealTime = (video, model, canvas) => {
           }
         }
 
-        // 顔全体に赤い四角を描く
-        // const start = predConf[i].topLeft;
-        // const end = predConf[i].bottomRight;
-        // const size = [end[0] - start[0], end[1] - start[1]];
-        // ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-        // ctx.fillRect(start[0], start[1], size[0], size[1]);
+        // メイン利用者以外の顔全体に赤い四角を描く
+        if (!predConf[i].main) {
+          const start = predConf[i].topLeft;
+          const end = predConf[i].bottomRight;
+          const size = [end[0] - start[0], end[1] - start[1]];
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+          ctx.fillRect(start[0], start[1], size[0], size[1]);
+        }
 
         const landmarks = predConf[i].landmarks;
-
         if (annotateBoxes) {
           ctx.fillStyle = 'blue';
           for (let j = 0; j < landmarks.length; j++) {
@@ -209,8 +240,9 @@ const detectFaceInRealTime = (video, model, canvas) => {
 
     // 認識しているポーズ数の表示
     // TODO: posenet側との共通化
-    const text = document.createTextNode(`faces count (show / all): ${predConf.length} / ${predictions.length}`);
-    const newElem = document.createElement('p').appendChild(text);
+    const text = `poses count (show / all): ${predConf.length} / ${predictions.length} ${predConf.length > 1 ? '覗き込みを検知しています（赤四角）' : ''}`;
+    const textNode = document.createTextNode(text);
+    const newElem = document.createElement('p').appendChild(textNode);
     const parent = document.getElementById('raw-data');
     parent.replaceChild(newElem, parent.childNodes[0]);
 
